@@ -1,6 +1,8 @@
+'use client';
+
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { POKEMON_PAGE_SIZE, formatName, fetchPokemonPage } from "@/lib/pokeApi";
+import { POKEMON_PAGE_SIZE, formatName, fetchPokemonPage, mapPokemon } from "@/lib/pokeApi";
 
 export function PokemonBrowser() {
   const [page, setPage] = useState<any>(1);
@@ -10,8 +12,17 @@ export function PokemonBrowser() {
 
   useEffect(() => {
     // TODO: Hook this up to fetch data and update loading/error/pokemon state.
-    fetchPokemonPage(page);
-  }, []);
+    fetchPokemonPage(page).then((response) => {
+      const formattedResponse: any = response?.map((p) => mapPokemon(p)) || [];
+      if (formattedResponse.length === 0) {
+        setError('Error fetching pokemon from API');
+      } else {
+        setError(null);
+        setPokemon(formattedResponse);
+        setLoading(false);
+      }
+    });
+  }, [page]);
 
   return (
     <section className="panel gap-4">
@@ -47,12 +58,12 @@ export function PokemonBrowser() {
               <SkeletonCard key={`skeleton-${idx}`} />
             ))
           : pokemon.map((entry: any) => (
-              <article key={entry.id} className="card">
+              <article key={entry.name} className="card">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="eyebrow">#{entry.id}</p>
                     <h3 className="text-lg font-semibold text-surface-900">
-                      {formatName(entry.name) as any}
+                      {entry.name}
                     </h3>
                   </div>
                   {entry.image ? (
@@ -72,8 +83,8 @@ export function PokemonBrowser() {
 
                 <div className="flex flex-wrap gap-2">
                   {entry.types.map((type: any) => (
-                    <span key={type} className="pill pill-soft">
-                      {formatName(type) as any}
+                    <span key={`${entry.name}_${type.type.name}`} className="pill pill-soft">
+                      {type.type.name}
                     </span>
                   ))}
                 </div>
@@ -93,13 +104,14 @@ export function PokemonBrowser() {
                     </div>
                   ))}
                 </dl>
-
-                <p className="text-xs text-surface-500">
-                  Total stats:{" "}
-                  <span className="font-semibold text-surface-800">
-                    {entry.total}
-                  </span>
-                </p>
+                <div className="flex justify-between">
+                  <p className="text-xs text-surface-500">
+                    Total stats:{" "}
+                    <span className="font-semibold text-surface-800">
+                      {entry.total}
+                    </span>
+                  </p>
+                </div>
               </article>
             ))}
       </div>
