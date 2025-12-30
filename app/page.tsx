@@ -1,5 +1,6 @@
 import { PokemonBrowser } from "@/components/PokemonBrowser";
 
+
 export default function Home() {
   return (
     <main className="w-full p-20">
@@ -23,10 +24,6 @@ export default function Home() {
           </div>
         </div>
       </header>
-
-      <div className="mt-6 responsive-grid">
-        <PokemonBrowser />
-      </div>
     </main>
   );
 }

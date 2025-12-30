@@ -1,14 +1,31 @@
 'use client';
 
-import Image from "next/image";
+
 import { useEffect, useState } from "react";
+import { useDeck } from "./DeckContext";
 import { POKEMON_PAGE_SIZE, formatName, fetchPokemonPage, mapPokemon } from "@/lib/pokeApi";
+import PokemonCard from './PokemonCard';
+import { addToDeck } from "@/lib/deckApi";
+
+interface Stat {
+  name: string,
+  value: number
+}
+interface Pokemon {
+  id: number,
+  name: string,
+  image: string,
+  types: string[],
+  stats: Stat[],
+  total: number
+}
 
 export function PokemonBrowser() {
-  const [page, setPage] = useState<any>(1);
-  const [pokemon, setPokemon] = useState<any>([]);
-  const [loading, setLoading] = useState<any>(true);
-  const [error, setError] = useState<any>(null);
+  const { deck, setDeck } = useDeck();
+  const [page, setPage] = useState<number>(1);
+  const [pokemon, setPokemon] = useState<Pokemon[]>(new Array<Pokemon>);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     // TODO: Hook this up to fetch data and update loading/error/pokemon state.
@@ -17,13 +34,24 @@ export function PokemonBrowser() {
       if (formattedResponse.length === 0) {
         setError('Error fetching pokemon from API');
       } else {
-        setError(null);
+        setError('');
         setPokemon(formattedResponse);
         setLoading(false);
       }
     });
   }, [page]);
-
+  async function addHandler(entry: Pokemon): Promise<void> {
+    if (deck.includes(entry)) {
+      console.log(`${entry.name} is already in deck`);
+      return;
+    }
+    console.log(`adding ${entry.name} to deck...`);
+    // call db to add pokemon to deck
+    await addToDeck(entry);
+    // optimistically update global state
+    setDeck([...deck, entry]);
+      // toggle button content and button click handler to be remove from deck
+  }
   return (
     <section className="panel gap-4">
       <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -57,62 +85,9 @@ export function PokemonBrowser() {
           ? Array.from({ length: 6 }).map((_, idx) => (
               <SkeletonCard key={`skeleton-${idx}`} />
             ))
-          : pokemon.map((entry: any) => (
-              <article key={entry.name} className="card">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="eyebrow">#{entry.id}</p>
-                    <h3 className="text-lg font-semibold text-surface-900">
-                      {entry.name}
-                    </h3>
-                  </div>
-                  {entry.image ? (
-                    <div className="relative h-20 w-20">
-                      <Image
-                        src={entry.image}
-                        alt={entry.name}
-                        fill
-                        sizes="80px"
-                        className="drop-shadow-lg object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-20 w-20 rounded-lg bg-surface-100" />
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {entry.types.map((type: any) => (
-                    <span key={`${entry.name}_${type.type.name}`} className="pill pill-soft">
-                      {type.type.name}
-                    </span>
-                  ))}
-                </div>
-
-                <dl className="grid grid-cols-3 gap-2 text-xs text-surface-600">
-                  {entry.stats.map((stat: any) => (
-                    <div
-                      key={stat.name}
-                      className="rounded-md bg-surface-50 px-2 py-2"
-                    >
-                      <dt className="uppercase tracking-wide text-[10px] text-surface-400">
-                        {stat.name.replace("-", " ")}
-                      </dt>
-                      <dd className="text-sm font-semibold text-surface-900">
-                        {stat.value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-                <div className="flex justify-between">
-                  <p className="text-xs text-surface-500">
-                    Total stats:{" "}
-                    <span className="font-semibold text-surface-800">
-                      {entry.total}
-                    </span>
-                  </p>
-                </div>
-              </article>
+          : pokemon.map((entry: Pokemon) => (
+            // BUG: buttonContent always shows 'Add to Deck' on refresh if pokemon is already in deck
+              <PokemonCard key={entry.name} entry={entry} buttonContent={deck.includes(entry) ? 'In Deck' : 'Add to Deck'} buttonClickHandler={() => addHandler(entry)}/>
             ))}
       </div>
 
@@ -121,7 +96,7 @@ export function PokemonBrowser() {
           type="button"
           className="btn btn-ghost"
           disabled={page === 1 || loading}
-          onClick={() => setPage((current: any) => Math.max(1, current - 1))}
+          onClick={() => setPage((current: number) => Math.max(1, current - 1))}
         >
           Previous page
         </button>
@@ -129,7 +104,7 @@ export function PokemonBrowser() {
           type="button"
           className="btn btn-ghost"
           disabled={loading}
-          onClick={() => setPage((current: any) => current + 1)}
+          onClick={() => setPage((current: number) => current + 1)}
         >
           Next page
         </button>

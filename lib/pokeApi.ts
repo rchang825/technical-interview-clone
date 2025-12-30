@@ -8,10 +8,22 @@ const STAT_ORDER = [
 ];
 
 const PAGE_SIZE = 12;
+interface Stat {
+  name: string,
+  value: number
+}
+interface Pokemon {
+  id: number,
+  name: string,
+  image: string,
+  types: string[],
+  stats: Stat[],
+  total: number
+}
 
 export const POKEMON_PAGE_SIZE = PAGE_SIZE;
 
-export async function fetchPokemonPage(page: any) {
+export async function fetchPokemonPage(page: number) {
   /*
    * TODO:
    * - Accept a page number and calculate offset/limit using PAGE_SIZE.
@@ -21,14 +33,14 @@ export async function fetchPokemonPage(page: any) {
    */
   // find limit using page number
   // endpoint: https://pokeapi.co/api/v2/pokemon
-  // [name: weedle, url: pokeapi/12] =>
-  const offset: number = (page - 1)  * PAGE_SIZE;
+  const OFFSET: number = (page - 1)  * PAGE_SIZE;
+
   try {
-    const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${PAGE_SIZE}&offset=${offset}`, {
+    const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${PAGE_SIZE}&offset=${OFFSET}`, {
       method: 'GET',
     });
     if (response.ok) {
-      let pokemon = await response.json();
+      const pokemon = await response.json();
         return Promise.all(pokemon.results.map(async (p: any) => {
           const details = await fetch(p.url);
           const detailsJSON = await details.json();
@@ -57,20 +69,14 @@ export function mapPokemon(detail: any) {
    * - Derive a display image
    * - Return a normalized object with id, name, image, types array, stats array, and total.
    */
-  type Pokemon = {
-    id: number,
-    name: string,
-    image: string,
-    types: string[],
-    stats: any[],
-    total: number
-  };
 
   const pokemon: Pokemon = {
     id: detail.id,
-    name: formatName(detail.name),
+    name: detail.name,
     image: detail.image,
-    types: detail.types,
+    types: detail.types.map((slot: {slot: number, type: {name: string, url: string}}) => {
+      return slot.type.name;
+    }),
     stats: STAT_ORDER.map((stat) => {
       const normalizedStat: {name: string, value: number} = {name: stat, value: 0};
       const foundStat = detail.stats.find((s: any) => s.stat.name === stat);
@@ -87,7 +93,7 @@ export function mapPokemon(detail: any) {
   return pokemon;
 }
 
-export function formatName(name: any): string {
+export function formatName(name: string): string {
   /*
    * TODO:
    * - Normalize a Pokemon name for display (e.g., capitalize first letter).
