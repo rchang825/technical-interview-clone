@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import PokemonCard from './PokemonCard';
-import { getDeck, removeFromDeck } from '@/lib/deckApi';
+import { removeFromDeck } from '@/lib/deckApi';
 import { useDeck } from './DeckContext';
 
 interface Stat {
@@ -20,7 +20,6 @@ interface Pokemon {
 
 export function DeckTable() {
   const { deck, setDeck } = useDeck();
-  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>(
     deck.length === 0
       ? 'Your deck is empty. Please add some Pokemon to your deck.'
@@ -28,12 +27,19 @@ export function DeckTable() {
   );
   async function removeHandler(entry: Pokemon): Promise<void> {
     console.log(`removing ${entry.name} from deck...`);
-    // call db to remove pokemon from deck
-    await removeFromDeck(entry);
-    // optimistically update global state
-    setDeck(deck.filter(p => p.id !== entry.id));
-    if (deck.length === 0) {
-      setError('Your deck is empty. Please add some Pokemon to your deck.');
+    try {
+      // call db to remove pokemon from deck
+      await removeFromDeck(entry);
+      // update global state
+      setDeck(deck.filter(p => p.id !== entry.id));
+      if (deck.length === 0) {
+        setError('Your deck is empty. Please add some Pokemon to your deck.');
+      } else {
+        setError('');
+      }
+    } catch (err) {
+      console.error(`Error removing ${entry.name} from deck:`, err);
+      setError(`Failed to remove ${entry.name} from deck.`);
     }
   }
 
@@ -56,19 +62,15 @@ export function DeckTable() {
         </div>
       ) :
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {loading
-            ? Array.from({ length: 6 }).map((_, idx) => (
-                <SkeletonCard key={`skeleton-${idx}`} />
-              ))
-            : deck.map((entry: Pokemon) => (
-                <PokemonCard
-                  key={entry.name} entry={entry}
-                  buttonContent='Remove from deck'
-                  buttonClickHandler={() => {
-                    removeHandler(entry);
-                  }}
-                />
-              ))}
+          {deck.map((entry: Pokemon) => (
+            <PokemonCard
+              key={entry.name} entry={entry}
+              buttonContent='Remove from deck'
+              buttonClickHandler={() => {
+                removeHandler(entry);
+              }}
+            />
+          ))}
         </div>
       }
     </section>
@@ -86,25 +88,3 @@ export function DeckTable() {
  * - Handle the empty state gracefully with a helpful message.
  * - Preserve styling hooks used previously (table headers, hover states, pills, summary pill).
  */
-function SkeletonCard() {
-  return (
-    <article className="card animate-pulse">
-      <div className="flex items-start justify-between">
-        <div className="h-4 w-20 rounded bg-surface-100" />
-        <div className="h-12 w-12 rounded-lg bg-surface-100" />
-      </div>
-      <div className="flex gap-2">
-        <div className="h-6 w-16 rounded-full bg-surface-100" />
-        <div className="h-6 w-12 rounded-full bg-surface-100" />
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <div className="h-12 rounded bg-surface-100" />
-        <div className="h-12 rounded bg-surface-100" />
-        <div className="h-12 rounded bg-surface-100" />
-      </div>
-      <div className="flex justify-end">
-        <div className="h-10 w-24 rounded bg-surface-100" />
-      </div>
-    </article>
-  );
-}

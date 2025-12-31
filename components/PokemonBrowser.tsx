@@ -1,6 +1,5 @@
 'use client';
 
-
 import { useEffect, useState } from "react";
 import { useDeck } from "./DeckContext";
 import { POKEMON_PAGE_SIZE, formatName, fetchPokemonPage, mapPokemon } from "@/lib/pokeApi";
@@ -30,7 +29,7 @@ export function PokemonBrowser() {
   useEffect(() => {
     // TODO: Hook this up to fetch data and update loading/error/pokemon state.
     fetchPokemonPage(page).then((response) => {
-      const formattedResponse: any = response?.map((p) => mapPokemon(p)) || [];
+      const formattedResponse: Pokemon[] = response?.map((p) => mapPokemon(p)) || [];
       if (formattedResponse.length === 0) {
         setError('Error fetching pokemon from API');
       } else {
@@ -41,16 +40,20 @@ export function PokemonBrowser() {
     });
   }, [page]);
   async function addHandler(entry: Pokemon): Promise<void> {
-    if (deck.includes(entry)) {
+    if (deck.some(p => p.id === entry.id)) {
       console.log(`${entry.name} is already in deck`);
       return;
     }
     console.log(`adding ${entry.name} to deck...`);
-    // call db to add pokemon to deck
-    await addToDeck(entry);
-    // optimistically update global state
-    setDeck([...deck, entry]);
-      // toggle button content and button click handler to be remove from deck
+    try {
+      await addToDeck(entry);
+      setError('');
+      setDeck([...deck, entry]);
+      console.log(`${entry.name} added to deck`);
+    } catch (err) {
+      console.log('Failed to add to deck:', err);
+      setError(`Failed to add ${entry.name} to deck.`);
+    }
   }
   return (
     <section className="panel gap-4">
@@ -86,8 +89,7 @@ export function PokemonBrowser() {
               <SkeletonCard key={`skeleton-${idx}`} />
             ))
           : pokemon.map((entry: Pokemon) => (
-            // BUG: buttonContent always shows 'Add to Deck' on refresh if pokemon is already in deck
-              <PokemonCard key={entry.name} entry={entry} buttonContent={deck.includes(entry) ? 'In Deck' : 'Add to Deck'} buttonClickHandler={() => addHandler(entry)}/>
+              <PokemonCard key={entry.name} entry={entry} buttonContent={deck.some(p => p.id === entry.id) ? 'In Deck' : 'Add to Deck'} buttonClickHandler={() => addHandler(entry)}/>
             ))}
       </div>
 

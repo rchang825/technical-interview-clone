@@ -44,19 +44,19 @@ export async function fetchPokemonPage(page: number) {
         return Promise.all(pokemon.results.map(async (p: any) => {
           const details = await fetch(p.url);
           const detailsJSON = await details.json();
-            return {
-              name: p.name,
-              id: detailsJSON.id,
-              image: detailsJSON.sprites.front_default,
-              types: detailsJSON.types,
-              stats: detailsJSON.stats
-            }
+          return {
+            name: p.name,
+            id: detailsJSON.id,
+            image: detailsJSON.sprites.front_default,
+            types: detailsJSON.types,
+            stats: detailsJSON.stats
+          };
         }));
     } else {
       throw new Error(`Response status: ${response.status}`);
     }
-  } catch (error: any) {
-    console.error(error.message);
+  } catch (err) {
+    console.error(err);
   }
 }
 

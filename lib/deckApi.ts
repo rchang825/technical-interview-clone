@@ -36,6 +36,7 @@ export async function getDeck() {
     return formattedResult;
   } catch (err) {
     console.error(err);
+    throw new Error('Failed to fetch deck from database');
   }
 };
 
@@ -84,6 +85,7 @@ export async function addToDeck(entry: Pokemon) {
     }
   } catch (err) {
     console.error('One or more errors occurred while adding to deck:', err);
+    throw err;
   }
 }
 
@@ -91,10 +93,9 @@ export async function removeFromDeck(entry: Pokemon) {
   // DELETE ...
   try {
     await pool.query('DELETE FROM pokemon WHERE id = $1', [entry.id]);
-    // remove from join table as well
-    await pool.query('DELETE FROM pokemon_types WHERE pokemon_id = $1', [entry.id]);
   } catch (err) {
     console.error(`Error removing ${entry.name} from deck:`, err);
+    throw err;
   }
 }
 
