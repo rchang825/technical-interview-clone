@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDeck } from "./DeckContext";
-import { POKEMON_PAGE_SIZE, formatName, fetchPokemonPage, mapPokemon } from "@/lib/pokeApi";
+import { POKEMON_PAGE_SIZE, fetchPokemonPage, mapPokemon } from "@/lib/pokeApi";
 import PokemonCard from './PokemonCard';
 import { addToDeck } from "@/lib/deckApi";
 

@@ -99,10 +99,21 @@ export function formatName(name: string): string {
    * - Normalize a Pokemon name for display (e.g., capitalize first letter).
    * - Handle edge cases like empty/undefined input gracefully.
    */
-  if (name && name.length > 0) {
-    return name.substring(0, 1).toUpperCase() + name.substring(1);
+  let formattedName: string = name;
+  if (formattedName) {
+    formattedName = formattedName.split('-')
+      .map((word: string) => {
+        if (word === 'm') {
+          return '♂';
+        } else if (word === 'f') {
+          return '♀';
+        } else {
+          return word[0].toUpperCase() + word.substring(1);
+        }
+      })
+      .join(' ');
   }
-  return name;
+  return formattedName;
 }
 
 export const ALL_STAT_KEYS = [...STAT_ORDER];

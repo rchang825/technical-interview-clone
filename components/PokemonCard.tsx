@@ -65,7 +65,7 @@ export default function PokemonCard({ entry, buttonContent, buttonClickHandler }
         ))}
       </dl>
       <div className="flex justify-between">
-        <p className="text-xs text-surface-500">
+        <p className="pill text-xs text-surface-500">
           Total stats:{" "}
           <span className="font-semibold text-surface-800">
             {entry.total}

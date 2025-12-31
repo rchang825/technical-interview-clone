@@ -135,31 +135,31 @@ export function DeckTable() {
             </div>
             <div className="pill pill-soft">
               <p className="summary-label">Avg HP</p>
-              <p className="summary-value">{deckSummary.avg_hp}</p>
+              <p className="summary-value">{deckSummary.avg_hp.toFixed(2)}</p>
             </div>
             <div className="pill pill-soft">
               <p className="summary-label">Avg Atk</p>
-              <p className="summary-value">{deckSummary.avg_attack}</p>
+              <p className="summary-value">{deckSummary.avg_attack.toFixed(2)}</p>
             </div>
             <div className="pill pill-soft">
               <p className="summary-label">Avg Def</p>
-              <p className="summary-value">{deckSummary.avg_defense}</p>
+              <p className="summary-value">{deckSummary.avg_defense.toFixed(2)}</p>
             </div>
             <div className="pill pill-soft">
               <p className="summary-label">Avg Sp. Atk</p>
-              <p className="summary-value">{deckSummary.avg_special_attack}</p>
+              <p className="summary-value">{deckSummary.avg_special_attack.toFixed(2)}</p>
             </div>
             <div className="pill pill-soft">
               <p className="summary-label">Avg Sp. Def</p>
-              <p className="summary-value">{deckSummary.avg_special_defense}</p>
+              <p className="summary-value">{deckSummary.avg_special_defense.toFixed(2)}</p>
             </div>
             <div className="pill pill-soft">
               <p className="summary-label">Avg Spd</p>
-              <p className="summary-value">{deckSummary.avg_speed}</p>
+              <p className="summary-value">{deckSummary.avg_speed.toFixed(2)}</p>
             </div>
             <div className="pill pill-soft">
               <p className="summary-label">Avg Total Stats</p>
-              <p className="summary-value">{deckSummary.avg_total}</p>
+              <p className="summary-value">{deckSummary.avg_total.toFixed(2)}</p>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
