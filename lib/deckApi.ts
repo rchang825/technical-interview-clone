@@ -1,6 +1,19 @@
 'use server';
 import pool from '../db';
 
+interface Stat {
+  name: string,
+  value: number
+}
+interface Pokemon {
+  id: number,
+  name: string,
+  image: string,
+  types: string[],
+  stats: Stat[],
+  total: number
+}
+
 export async function getDeck() {
   // SELECT * ...
   // default sort is by id ascending
@@ -40,18 +53,22 @@ export async function getDeck() {
   }
 };
 
-interface Stat {
-  name: string,
-  value: number
-}
-interface Pokemon {
-  id: number,
-  name: string,
-  image: string,
-  types: string[],
-  stats: Stat[],
-  total: number
-}
+// export async function getMetadata() {
+//   // count, avg for each stat, avg total
+//   try {
+//     const queryStr = `
+//     SELECT COUNT(id), AVG(hp) AS average_hp, AVG(attack) AS average_attack,
+//     AVG(defense) AS average_defense, AVG(special_attack) AS average_special_attack,
+//     AVG(special_defense) AS average_special_defense, AVG(speed) AS average_speed,
+//     AVG(total) AS average_total
+//     FROM pokemon`;
+//     const summary = await pool.query(queryStr, []);
+//     return summary.rows;
+//   } catch (err) {
+//     console.error('Error calculating metadata:', err);
+//     throw err;
+//   }
+// }
 
 export async function addToDeck(entry: Pokemon) {
   // INSERT ...
