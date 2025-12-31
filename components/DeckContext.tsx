@@ -15,17 +15,28 @@ interface Pokemon {
   total: number
 }
 
-const DeckContext = createContext<{ deck: Pokemon[]; setDeck: (deck: Pokemon[]) => void } | null>(null);
+const DeckContext = createContext<{ deck: Pokemon[]; setDeck: (deck: Pokemon[]) => void; deckLoaded: boolean; setDeckLoaded: (loaded: boolean) => void } | null>(null);
 
 export function DeckInitializer() {
-  const { setDeck } = useDeck()
+  const { setDeck, setDeckLoaded } = useDeck()
   useEffect(() => {
-    let alive = true
+    let alive = true;
     getDeck()
-      .then(d => { if (alive) setDeck(d || []) })
-      .catch(() => { console.error('Error fetching deck from database') })
+      .then((d) => {
+        if (alive) {
+          setDeck(d || []);
+        }
+      })
+      .catch(() => {
+        console.error('Error fetching deck from database');
+      })
+      .finally(() => {
+        if (alive) {
+          setDeckLoaded(true);
+        }
+      });
     return () => { alive = false }
-  }, [setDeck])
+  }, [setDeck, setDeckLoaded])
   return null
 }
 
@@ -39,9 +50,10 @@ export function useDeck() {
 
 export function DeckProvider({ children }: { children: React.ReactNode }) {
   const [deck, setDeck] = useState<Pokemon[]>([]);
+  const [deckLoaded, setDeckLoaded] = useState<boolean>(false);
 
   return (
-    <DeckContext.Provider value={{ deck, setDeck }}>
+    <DeckContext.Provider value={{ deck, setDeck, deckLoaded, setDeckLoaded }}>
       {children}
     </DeckContext.Provider>
   );

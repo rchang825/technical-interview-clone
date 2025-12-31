@@ -19,12 +19,8 @@ interface Pokemon {
 }
 
 export function DeckTable() {
-  const { deck, setDeck } = useDeck();
-  const [error, setError] = useState<string>(
-    deck.length === 0
-      ? 'Your deck is empty. Please add some Pokemon to your deck.'
-      : ''
-  );
+  const { deck, setDeck, deckLoaded } = useDeck();
+  const [error, setError] = useState<string>('');
   async function removeHandler(entry: Pokemon): Promise<void> {
     console.log(`removing ${entry.name} from deck...`);
     try {
@@ -56,10 +52,20 @@ export function DeckTable() {
         </div>
       </header>
 
-      {error ? (
+      {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      ) }
+      {!deckLoaded && (
+        <p className="text-sm text-surface-500">
+          Loading your deck...
+        </p>
+      )}
+      {deckLoaded && deck.length === 0 ? (
+        <p className="text-sm text-red-700">
+          Your deck is empty. Add some Pokemon from the Browser!
+        </p>
       ) :
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {deck.map((entry: Pokemon) => (
