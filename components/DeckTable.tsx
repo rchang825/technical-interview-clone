@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import PokemonCard from './PokemonCard';
-import { removeFromDeck } from '@/lib/deckApi';
+import { removeFromDeck, getDeck } from '@/lib/deckApi';
 import { useDeck } from './DeckContext';
 
 interface Stat {
@@ -78,7 +78,6 @@ export function DeckTable() {
     console.log('deck summary:', meta);
     return meta;
   }, [deck]);
-
   const [error, setError] = useState<string>('');
   async function removeHandler(entry: Pokemon): Promise<void> {
     console.log(`removing ${entry.name} from deck...`);
@@ -96,6 +95,53 @@ export function DeckTable() {
       console.error(`Error removing ${entry.name} from deck:`, err);
       setError(`Failed to remove ${entry.name} from deck.`);
     }
+  }
+  async function sortHandler(criteria: string): Promise<void> {
+    switch (criteria) {
+      case 'name':
+        deck.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'type':
+        deck.sort((a, b) => {
+          // TODO: sort by first type either alphabetically or reverse alphabetically (asc or desc)
+          const typeA = a.types.sort()[0];
+          const typeB = b.types.sort()[0];
+          if (typeA === typeB) {
+            return a.id - b.id;
+          }
+          return typeA.localeCompare(typeB);
+        });
+        break;
+      case 'hp':
+      case 'attack':
+      case 'defense':
+      case 'special-attack':
+      case 'special-defense':
+      case 'speed':
+        deck.sort((a, b) => {
+          const statA = a.stats.find(s => s.name === criteria)?.value || 0;
+          const statB = b.stats.find(s => s.name === criteria)?.value || 0;
+          if (statA === statB) {
+            return a.id - b.id;
+          }
+          return statA - statB;
+        });
+        break;
+      case 'total':
+        deck.sort((a, b) => {
+          if (a.total === b.total) {
+            return a.id - b.id;
+          }
+          return a.total - b.total;
+        });
+        break;
+      default:
+        break;
+    }
+    if (criteria === 'desc') {
+      deck.reverse();
+    }
+    setDeck([...deck]);
   }
 
   return (
@@ -128,39 +174,25 @@ export function DeckTable() {
         </p>
       ) :
         <div>
-          <div className="summary-pill mb-4">
-            <div className="pill pill-soft">
-              <p className="summary-label">Deck Size</p>
-              <p className="summary-value">{deckSummary.count}</p>
-            </div>
-            <div className="pill pill-soft">
-              <p className="summary-label">Avg HP</p>
-              <p className="summary-value">{deckSummary.avg_hp.toFixed(2)}</p>
-            </div>
-            <div className="pill pill-soft">
-              <p className="summary-label">Avg Atk</p>
-              <p className="summary-value">{deckSummary.avg_attack.toFixed(2)}</p>
-            </div>
-            <div className="pill pill-soft">
-              <p className="summary-label">Avg Def</p>
-              <p className="summary-value">{deckSummary.avg_defense.toFixed(2)}</p>
-            </div>
-            <div className="pill pill-soft">
-              <p className="summary-label">Avg Sp. Atk</p>
-              <p className="summary-value">{deckSummary.avg_special_attack.toFixed(2)}</p>
-            </div>
-            <div className="pill pill-soft">
-              <p className="summary-label">Avg Sp. Def</p>
-              <p className="summary-value">{deckSummary.avg_special_defense.toFixed(2)}</p>
-            </div>
-            <div className="pill pill-soft">
-              <p className="summary-label">Avg Spd</p>
-              <p className="summary-value">{deckSummary.avg_speed.toFixed(2)}</p>
-            </div>
-            <div className="pill pill-soft">
-              <p className="summary-label">Avg Total Stats</p>
-              <p className="summary-value">{deckSummary.avg_total.toFixed(2)}</p>
-            </div>
+          <DeckSummary deckSummary={deckSummary} />
+          <div>
+            <button className="btn btn-ghost" onClick={() => {
+                console.log('sorting by type ASC');
+                sortHandler('type');
+            }}>Type</button>
+            <button className="btn btn-ghost" onClick={() => {
+                console.log('sorting by hp stat ASC');
+                sortHandler('hp');
+            }}>HP</button>
+            {/*TODO: states for asc/desc*/}
+            <button className="btn btn-ghost" onClick={() => {
+                console.log('ASC');
+                sortHandler('asc');
+            }}>Asc</button>
+            <button className="btn btn-ghost" onClick={() => {
+                console.log('DESC');
+                sortHandler('desc');
+            }}>Desc</button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {deck.map((entry: Pokemon) => (
@@ -179,6 +211,44 @@ export function DeckTable() {
   );
 };
 
+function DeckSummary({ deckSummary }: { deckSummary: DeckSummary }) {
+  return (
+    <div className="summary-pill mb-4">
+      <div className="pill pill-soft">
+        <p className="summary-label">Deck Size</p>
+        <p className="summary-value">{deckSummary.count}</p>
+      </div>
+      <div className="pill pill-soft">
+        <p className="summary-label">Avg HP</p>
+        <p className="summary-value">{deckSummary.avg_hp.toFixed(2)}</p>
+      </div>
+      <div className="pill pill-soft">
+        <p className="summary-label">Avg Atk</p>
+        <p className="summary-value">{deckSummary.avg_attack.toFixed(2)}</p>
+      </div>
+      <div className="pill pill-soft">
+        <p className="summary-label">Avg Def</p>
+        <p className="summary-value">{deckSummary.avg_defense.toFixed(2)}</p>
+      </div>
+      <div className="pill pill-soft">
+        <p className="summary-label">Avg Sp. Atk</p>
+        <p className="summary-value">{deckSummary.avg_special_attack.toFixed(2)}</p>
+      </div>
+      <div className="pill pill-soft">
+        <p className="summary-label">Avg Sp. Def</p>
+        <p className="summary-value">{deckSummary.avg_special_defense.toFixed(2)}</p>
+      </div>
+      <div className="pill pill-soft">
+        <p className="summary-label">Avg Spd</p>
+        <p className="summary-value">{deckSummary.avg_speed.toFixed(2)}</p>
+      </div>
+      <div className="pill pill-soft">
+        <p className="summary-label">Avg Total Stats</p>
+        <p className="summary-value">{deckSummary.avg_total.toFixed(2)}</p>
+      </div>
+    </div>
+  );
+}
 /*
  * TODO: Create the deck table component with the following features:
  * - Integrate global state management to access the current deck of Pokemon.
