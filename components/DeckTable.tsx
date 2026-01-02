@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import PokemonCard from './PokemonCard';
+import PokemonRow from './PokemonRow';
 import { getDeck, removeFromDeck, getFilteredDeck } from '@/lib/deckApi';
 import { useDeck } from './DeckContext';
 import Sort from './Sort';
@@ -273,19 +273,36 @@ export function DeckTable() {
             Your deck is empty. Try changing the type filter if you have applied one, or add some Pokemon from the Browser!
         </p>
       ) :
-        <div>
+        <div className="table-scroll">
           <DeckSummary deckSummary={deckSummary} />
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {displayDeck.map((entry: Pokemon) => (
-              <PokemonCard
-                key={entry.name} entry={entry}
-                buttonContent='Remove from deck'
-                buttonClickHandler={() => {
-                  removeHandler(entry);
-                }}
-              />
-            ))}
-          </div>
+          <table className="table-auto w-full">
+            <thead>
+              <tr>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">ID</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">Name</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">Types</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">HP</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">Attack</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">Defense</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">Sp. Atk</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">Sp. Def</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">Speed</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">Total</th>
+                <th className="table-header px-4 py-2 text-sm text-surface-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayDeck.map((entry: Pokemon) => (
+                <PokemonRow
+                  key={entry.name} entry={entry}
+                  buttonContent='Remove from deck'
+                  buttonClickHandler={() => {
+                    removeHandler(entry);
+                  }}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       }
     </section>
