@@ -14,9 +14,80 @@ interface Pokemon {
   total: number
 }
 
-export async function getDeck(sort: string = 'id', asc: boolean = true) {
+interface PokemonRow {
+  id: number;
+  name: string;
+  image: string;
+  hp: number;
+  attack: number;
+  defense: number;
+  special_attack: number;
+  special_defense: number;
+  speed: number;
+  total: number;
+}
+
+function formatResult(rows: PokemonRow[]): Pokemon[] {
+  return rows.map((row) => {
+    return {
+      id: row.id,
+      name: row.name,
+      image: row.image,
+      types: [],
+      stats: [
+        { name: 'hp', value: row.hp },
+        { name: 'attack', value: row.attack },
+        { name: 'defense', value: row.defense },
+        { name: 'special-attack', value: row.special_attack },
+        { name: 'special-defense', value: row.special_defense },
+        { name: 'speed', value: row.speed },
+      ],
+      total: row.total,
+    };
+  });
+}
+
+export async function getFilteredDeck(filter: string = '', search: string = '') {
+  // SELECT * WHERE ...
+  // filter by type or name
+  try {
+    let queryStr: string = 'SELECT p.* FROM pokemon p';
+    const queryParams: any[] = [];
+    if (filter) {
+      queryStr += `
+        JOIN pokemon_types pt ON p.id = pt.pokemon_id
+        JOIN types t ON t.id = pt.type_id
+        WHERE t.name = $1`;
+      queryParams.push(filter);
+    }
+    // if (search) {
+    //   queryStr += filter ? ' AND' : ' WHERE';
+    //   const paramNum = queryParams.length + 1;
+    //   queryStr += ` pokemon.name ILIKE $${paramNum}`;
+    //   queryParams.push(`%${search}%`);
+    // }
+    // queryStr += ' ORDER BY p.name ASC'; CHANGE THIS???
+    const result = await pool.query(queryStr, queryParams);
+    const formattedResult: Pokemon[] = formatResult(result.rows);
+    for (const pokemon of formattedResult) {
+      const typeResult = await pool.query(
+        `SELECT type.name FROM types type
+         JOIN pokemon_types pt ON type.id = pt.type_id
+         WHERE pt.pokemon_id = $1`,
+        [pokemon.id]
+      );
+      pokemon.types = typeResult.rows.map((typeRow) => typeRow.name);
+    }
+    return formattedResult;
+  } catch (err) {
+    console.error(err);
+    throw new Error('Failed to fetch filtered deck from database');
+  }
+}
+
+export async function getDeck(sort: string = 'name', asc: boolean = true) {
   // SELECT * ...
-  // default sort is by id ascending
+  // default sort is by name ascending
   try {
     let queryStr: string = '';
     let result;
@@ -30,11 +101,11 @@ export async function getDeck(sort: string = 'id', asc: boolean = true) {
           JOIN types t ON t.id = pt.type_id
           GROUP BY pt.pokemon_id
         ) sorted ON sorted.pokemon_id = p.id
-        ORDER BY sorted.sort_type ${asc ? 'ASC' : 'DESC'}, p.id ASC
+        ORDER BY sorted.sort_type ${asc ? 'ASC' : 'DESC'}
       `;
       result = await pool.query(queryStr, []);
     } else {
-      queryStr = `SELECT * FROM pokemon ORDER BY ${sort} ${asc ? 'ASC' : 'DESC'}, id ASC`;
+      queryStr = `SELECT * FROM pokemon ORDER BY ${sort} ${asc ? 'ASC' : 'DESC'}, name ASC`;
       result = await pool.query(queryStr, []);
     }
     const formattedResult: Pokemon[] = result.rows.map((row) => {
@@ -84,7 +155,7 @@ export async function getDeck(sort: string = 'id', asc: boolean = true) {
 //       SELECT pokemon.* FROM pokemon
 //       JOIN pokemon_types ON pokemon.id = pokemon_types.pokemon_id
 //       WHERE type_id = $1
-//       ORDER BY pokemon.id ASC`;
+//       ORDER BY pokemon.name ASC`;
 //     const result = await pool.query(queryStr, [type_id.rows[0]?.id]);
 //     const formattedResult: Pokemon[] = result.rows.map((row) => {
 //       return {

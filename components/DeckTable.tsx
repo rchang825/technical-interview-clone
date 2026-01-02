@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import PokemonCard from './PokemonCard';
-import { removeFromDeck, getDeck } from '@/lib/deckApi';
+import { getDeck, removeFromDeck, getFilteredDeck } from '@/lib/deckApi';
 import { useDeck } from './DeckContext';
+import Sort from './Sort';
 
 interface Stat {
   name: string,
@@ -29,6 +30,69 @@ interface DeckSummary {
 }
 export function DeckTable() {
   const { deck, setDeck, deckLoaded } = useDeck();
+  const [error, setError] = useState<string>('');
+  const [asc, setAsc] = useState<boolean>(true);
+  const [sortCriteria, setSortCriteria] = useState<string>('name');
+  const [search, setSearch] = useState<string>('');
+
+  function applySearch(list: Pokemon[], term: string): Pokemon[] {
+    const q = term.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((p) => p.name.toLowerCase().includes(q));
+  }
+
+  function applySort(list: Pokemon[], criteria: string, asc: boolean): Pokemon[] {
+    const arr = [...list];
+    switch (criteria) {
+      case 'id':
+        arr.sort((a, b) => (asc ? a.id - b.id : b.id - a.id));
+        break;
+      case 'name':
+        arr.sort((a, b) => (asc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
+        break;
+      case 'type': {
+        arr.sort((a, b) => {
+          const aTypes = [...a.types].sort();
+          const bTypes = [...b.types].sort();
+          const typeA = asc ? aTypes[0] : aTypes[aTypes.length - 1];
+          const typeB = asc ? bTypes[0] : bTypes[bTypes.length - 1];
+          if (typeA === typeB) return a.id - b.id;
+          return asc ? typeA.localeCompare(typeB) : typeB.localeCompare(typeA);
+        });
+        break;
+      }
+      case 'hp':
+      case 'attack':
+      case 'defense':
+      case 'special-attack':
+      case 'special-defense':
+      case 'speed':
+        arr.sort((a, b) => {
+          const statA = a.stats.find((s) => s.name === criteria)?.value || 0;
+          const statB = b.stats.find((s) => s.name === criteria)?.value || 0;
+          if (statA === statB) return a.id - b.id;
+          return asc ? statA - statB : statB - statA;
+        });
+        break;
+      case 'total':
+        arr.sort((a, b) => {
+          if (a.total === b.total) return a.id - b.id;
+          return asc ? a.total - b.total : b.total - a.total;
+        });
+        break;
+      default:
+        break;
+    }
+    return arr;
+  }
+
+  const displayDeck = useMemo(() => {
+    console.log(`Updating displayed pokemon with ${deck.length} entries, sortCriteria: ${sortCriteria}, asc: ${asc}, search: ${search}`);
+    let updated = applySearch(deck, search);
+    updated = applySort(updated, sortCriteria, asc);
+    return updated;
+  }, [deck, sortCriteria, asc, search]);
+
   const deckSummary = useMemo(() => {
     const meta: DeckSummary = {
       count: deck.length,
@@ -78,13 +142,11 @@ export function DeckTable() {
     console.log('deck summary:', meta);
     return meta;
   }, [deck]);
-  const [error, setError] = useState<string>('');
+
   async function removeHandler(entry: Pokemon): Promise<void> {
     console.log(`removing ${entry.name} from deck...`);
     try {
-      // call db to remove pokemon from deck
       await removeFromDeck(entry);
-      // update global state
       setDeck(deck.filter(p => p.id !== entry.id));
       if (deck.length === 0) {
         setError('Your deck is empty. Please add some Pokemon to your deck.');
@@ -96,54 +158,50 @@ export function DeckTable() {
       setError(`Failed to remove ${entry.name} from deck.`);
     }
   }
-  async function sortHandler(criteria: string): Promise<void> {
-    switch (criteria) {
-      case 'name':
-        deck.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'type':
-        deck.sort((a, b) => {
-          // TODO: sort by first type either alphabetically or reverse alphabetically (asc or desc)
-          const typeA = a.types.sort()[0];
-          const typeB = b.types.sort()[0];
-          if (typeA === typeB) {
-            return a.id - b.id;
-          }
-          return typeA.localeCompare(typeB);
-        });
-        break;
-      case 'hp':
-      case 'attack':
-      case 'defense':
-      case 'special-attack':
-      case 'special-defense':
-      case 'speed':
-        deck.sort((a, b) => {
-          const statA = a.stats.find(s => s.name === criteria)?.value || 0;
-          const statB = b.stats.find(s => s.name === criteria)?.value || 0;
-          if (statA === statB) {
-            return a.id - b.id;
-          }
-          return statA - statB;
-        });
-        break;
-      case 'total':
-        deck.sort((a, b) => {
-          if (a.total === b.total) {
-            return a.id - b.id;
-          }
-          return a.total - b.total;
-        });
-        break;
-      default:
-        break;
+  async function sortHandler(criteria: string, asc: boolean): Promise<void> {
+    console.log(`sorting by ${criteria} in ${asc ? 'ascending' : 'descending'} order...`);
+    setSortCriteria(criteria);
+    setAsc(asc);
+  }
+  async function filterHandler(type: string): Promise<void> {
+    console.log(`filtering by Type ${type}...`);
+    try {
+      const filteredDeck = await getFilteredDeck(type);
+      setDeck(filteredDeck);
+      setError('');
+    } catch (err) {
+      console.error('Error filtering deck:', err);
+      setError('Failed to filter deck.');
     }
-    if (criteria === 'desc') {
-      deck.reverse();
+  }
+  async function searchHandler(search: string): Promise<void> {
+    console.log(`searching for ${search}...`);
+    try {
+      setError('');
+      setSearch(search);
+    } catch (err) {
+      console.error('Error searching deck:', err);
+      setError('Failed to search deck.');
     }
-    setDeck([...deck]);
   }
 
+  async function resetHandler(): Promise<void> {
+    console.log('Resetting deck sorts, filters, search terms...');
+    try {
+      const reset = await getDeck();
+      setDeck(reset);
+      (document.getElementById('search') as HTMLInputElement)!.value = '';
+      (document.getElementById('type') as HTMLSelectElement)!.value = '';
+      setSortCriteria('name');
+      (document.getElementById('sort') as HTMLSelectElement)!.value = 'name';
+      setAsc(true);
+      setSearch('');
+      setError('');
+    } catch (err) {
+      console.error('Error resetting deck:', err);
+      setError('Failed to reset deck.');
+    }
+  }
   return (
     <section className="panel gap-4">
       <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -167,35 +225,58 @@ export function DeckTable() {
           Loading your deck...
         </p>
       )}
-
+      {deckLoaded && (
+        <div className="panel">
+          <div className="flex items-center gap-2 mb-4">
+            <input className="pill-outline" type="text" id="search" placeholder="Search for a Pokemon name" size={25}/>
+            <button className="btn btn-primary"
+              onClick={() => {
+                const input = (document.getElementById('search') as HTMLInputElement).value;
+                searchHandler(input);
+              }}
+            >Search</button>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <Sort sortHandler={sortHandler} sortCriteria={sortCriteria} setSortCriteria={setSortCriteria} asc={asc} setAsc={setAsc} />
+            <div>
+              <label htmlFor="type">Filter by type: </label>
+              <select className="pill-outline" name="type" id="type" onChange={(e) => {
+                filterHandler(e.target.value);
+                }}>
+                <option value="">All Types (Default)</option>
+                <option value="normal">Normal</option>
+                <option value="fire">Fire</option>
+                <option value="water">Water</option>
+                <option value="grass">Grass</option>
+                <option value="electric">Electric</option>
+                <option value="ice">Ice</option>
+                <option value="fighting">Fighting</option>
+                <option value="poison">Poison</option>
+                <option value="ground">Ground</option>
+                <option value="flying">Flying</option>
+                <option value="psychic">Psychic</option>
+                <option value="bug">Bug</option>
+                <option value="rock">Rock</option>
+                <option value="ghost">Ghost</option>
+                <option value="dragon">Dragon</option>
+                <option value="dark">Dark</option>
+                <option value="steel">Steel</option>
+                <option value="fairy">Fairy</option>
+              </select>
+            </div>
+            <button className="btn btn-primary" onClick={resetHandler}>Reset All</button>
+          </div>
+        </div>
+      )}
       {deckLoaded && deck.length === 0 ? (
         <p className="text-sm text-red-700">
-          Your deck is empty. Add some Pokemon from the Browser!
+            Your deck is empty. Try changing the type filter if you have applied one, or add some Pokemon from the Browser!
         </p>
       ) :
         <div>
           <DeckSummary deckSummary={deckSummary} />
-          <div>
-            <button className="btn btn-ghost" onClick={() => {
-                console.log('sorting by type ASC');
-                sortHandler('type');
-            }}>Type</button>
-            <button className="btn btn-ghost" onClick={() => {
-                console.log('sorting by hp stat ASC');
-                sortHandler('hp');
-            }}>HP</button>
-            {/*TODO: states for asc/desc*/}
-            <button className="btn btn-ghost" onClick={() => {
-                console.log('ASC');
-                sortHandler('asc');
-            }}>Asc</button>
-            <button className="btn btn-ghost" onClick={() => {
-                console.log('DESC');
-                sortHandler('desc');
-            }}>Desc</button>
-          </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {deck.map((entry: Pokemon) => (
+            {displayDeck.map((entry: Pokemon) => (
               <PokemonCard
                 key={entry.name} entry={entry}
                 buttonContent='Remove from deck'
