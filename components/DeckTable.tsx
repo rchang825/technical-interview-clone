@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import PokemonRow from './PokemonRow';
-import { getDeck, removeFromDeck, getFilteredDeck } from '@/lib/deckApi';
+import { removeFromDeck, getFilteredDeck } from '@/lib/deckApi';
 import { useDeck } from './DeckContext';
 import Sort from './Sort';
 
@@ -34,11 +34,19 @@ export function DeckTable() {
   const [asc, setAsc] = useState<boolean>(true);
   const [sortCriteria, setSortCriteria] = useState<string>('name');
   const [search, setSearch] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [filteredDeck, setFilteredDeck] = useState<Pokemon[] | null>(null);
 
   function applySearch(list: Pokemon[], term: string): Pokemon[] {
     const q = term.trim().toLowerCase();
     if (!q) return list;
-    return list.filter((p) => p.name.toLowerCase().includes(q));
+    const searchedList = list.filter((p) => p.name.toLowerCase().includes(q));
+    if (searchedList.length === 0) {
+      setError(`No pokemon found matching "${term}"`);
+    } else {
+      setError('');
+    }
+    return searchedList;
   }
 
   function applySort(list: Pokemon[], criteria: string, asc: boolean): Pokemon[] {
@@ -87,11 +95,12 @@ export function DeckTable() {
   }
 
   const displayDeck = useMemo(() => {
-    console.log(`Updating displayed pokemon with ${deck.length} entries, sortCriteria: ${sortCriteria}, asc: ${asc}, search: ${search}`);
-    let updated = applySearch(deck, search);
+    const source = filteredDeck ? filteredDeck : deck;
+    console.log(`Updating displayed pokemon with sortCriteria: ${sortCriteria}, asc: ${asc}, search: ${search}, type: ${typeFilter}`);
+    let updated = applySearch(source, search);
     updated = applySort(updated, sortCriteria, asc);
     return updated;
-  }, [deck, sortCriteria, asc, search]);
+  }, [deck, filteredDeck, sortCriteria, asc, search, typeFilter]);
 
   const deckSummary = useMemo(() => {
     const meta: DeckSummary = {
@@ -147,11 +156,10 @@ export function DeckTable() {
     console.log(`removing ${entry.name} from deck...`);
     try {
       await removeFromDeck(entry);
-      setDeck(deck.filter(p => p.id !== entry.id));
-      if (deck.length === 0) {
-        setError('Your deck is empty. Please add some Pokemon to your deck.');
-      } else {
-        setError('');
+      const newDeck = deck.filter(p => p.id !== entry.id);
+      setDeck(newDeck);
+      if (typeFilter) {
+        setFilteredDeck((prev) => prev ? prev.filter((p) => p.id !== entry.id) : prev);
       }
     } catch (err) {
       console.error(`Error removing ${entry.name} from deck:`, err);
@@ -166,9 +174,19 @@ export function DeckTable() {
   async function filterHandler(type: string): Promise<void> {
     console.log(`filtering by Type ${type}...`);
     try {
-      const filteredDeck = await getFilteredDeck(type);
-      setDeck(filteredDeck);
-      setError('');
+      setTypeFilter(type);
+      if (type) {
+        const filtered = await getFilteredDeck(type);
+        setFilteredDeck(filtered);
+        if (deck.length > 0 && filtered.length === 0) {
+          setError(`No [${type}] type pokemon found in deck.`);
+        } else {
+          setError('');
+        }
+      } else {
+        setFilteredDeck(null);
+        setError('');
+      }
     } catch (err) {
       console.error('Error filtering deck:', err);
       setError('Failed to filter deck.');
@@ -188,14 +206,14 @@ export function DeckTable() {
   async function resetHandler(): Promise<void> {
     console.log('Resetting deck sorts, filters, search terms...');
     try {
-      const reset = await getDeck();
-      setDeck(reset);
       (document.getElementById('search') as HTMLInputElement)!.value = '';
       (document.getElementById('type') as HTMLSelectElement)!.value = '';
       setSortCriteria('name');
       (document.getElementById('sort') as HTMLSelectElement)!.value = 'name';
       setAsc(true);
       setSearch('');
+      setFilteredDeck(null);
+      setTypeFilter('');
       setError('');
     } catch (err) {
       console.error('Error resetting deck:', err);
@@ -214,17 +232,12 @@ export function DeckTable() {
           </p>
         </div>
       </header>
-
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      ) }
       {!deckLoaded && (
         <p className="text-sm text-surface-500">
           Loading your deck...
         </p>
       )}
+      {deckLoaded && <DeckSummary deckSummary={deckSummary} /> }
       {deckLoaded && (
         <div className="panel">
           <div className="flex items-center gap-2 mb-4">
@@ -236,7 +249,7 @@ export function DeckTable() {
               }}
             >Search</button>
           </div>
-          <div className="flex flex-wrap items-center gap-4 mb-4">
+          <div className="flex flex-wrap items-center gap-4">
             <Sort sortHandler={sortHandler} sortCriteria={sortCriteria} setSortCriteria={setSortCriteria} asc={asc} setAsc={setAsc} />
             <div>
               <label htmlFor="type">Filter by type: </label>
@@ -270,25 +283,24 @@ export function DeckTable() {
       )}
       {deckLoaded && deck.length === 0 ? (
         <p className="text-sm text-red-700">
-            Your deck is empty. Try changing the type filter if you have applied one, or add some Pokemon from the Browser!
+            Your deck is empty. Add some Pokemon from the Browser!
         </p>
       ) :
         <div className="table-scroll">
-          <DeckSummary deckSummary={deckSummary} />
-          <table className="table-auto w-full">
+          <table className="table-auto m-auto">
             <thead>
               <tr>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">ID</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">Name</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">Types</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">HP</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">Attack</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">Defense</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">Sp. Atk</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">Sp. Def</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">Speed</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">Total</th>
-                <th className="table-header px-4 py-2 text-sm text-surface-700">Actions</th>
+                <th className="px-4 py-2 text-sm text-surface-700">ID</th>
+                <th className="px-4 py-2 text-sm text-surface-700">Name</th>
+                <th className="px-4 py-2 text-sm text-surface-700">Types</th>
+                <th className="px-4 py-2 text-sm text-surface-700">HP</th>
+                <th className="px-4 py-2 text-sm text-surface-700">Attack</th>
+                <th className="px-4 py-2 text-sm text-surface-700">Defense</th>
+                <th className="px-4 py-2 text-sm text-surface-700">Sp. Atk</th>
+                <th className="px-4 py-2 text-sm text-surface-700">Sp. Def</th>
+                <th className="px-4 py-2 text-sm text-surface-700">Speed</th>
+                <th className="px-4 py-2 text-sm text-surface-700">Total</th>
+                <th className="px-4 py-2 text-sm text-surface-700">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -305,13 +317,18 @@ export function DeckTable() {
           </table>
         </div>
       }
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
     </section>
   );
 };
 
 function DeckSummary({ deckSummary }: { deckSummary: DeckSummary }) {
   return (
-    <div className="summary-pill mb-4">
+    <div className="summary-pill">
       <div className="pill pill-soft">
         <p className="summary-label">Deck Size</p>
         <p className="summary-value">{deckSummary.count}</p>

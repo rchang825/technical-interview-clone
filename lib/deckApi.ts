@@ -52,7 +52,7 @@ export async function getFilteredDeck(filter: string = '', search: string = '') 
   // filter by type or name
   try {
     let queryStr: string = 'SELECT p.* FROM pokemon p';
-    const queryParams: any[] = [];
+    const queryParams: string[] = [];
     if (filter) {
       queryStr += `
         JOIN pokemon_types pt ON p.id = pt.pokemon_id
