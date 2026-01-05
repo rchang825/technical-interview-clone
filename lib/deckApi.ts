@@ -1,4 +1,5 @@
 'use server';
+import { format } from 'path';
 import pool from '../db';
 
 interface Stat {
@@ -47,7 +48,7 @@ function formatResult(rows: PokemonRow[]): Pokemon[] {
   });
 }
 
-export async function getFilteredDeck(filter: string = '', search: string = '') {
+export async function getFilteredDeck(filter: string = ''/*, search: string = ''*/) {
   // SELECT * WHERE ...
   // filter by type or name
   try {
@@ -108,23 +109,7 @@ export async function getDeck(sort: string = 'name', asc: boolean = true) {
       queryStr = `SELECT * FROM pokemon ORDER BY ${sort} ${asc ? 'ASC' : 'DESC'}, name ASC`;
       result = await pool.query(queryStr, []);
     }
-    const formattedResult: Pokemon[] = result.rows.map((row) => {
-      return {
-        id: row.id,
-        name: row.name,
-        image: row.image,
-        types: [],
-        stats: [
-          { name: 'hp', value: row.hp },
-          { name: 'attack', value: row.attack },
-          { name: 'defense', value: row.defense },
-          { name: 'special-attack', value: row.special_attack },
-          { name: 'special-defense', value: row.special_defense },
-          { name: 'speed', value: row.speed },
-        ],
-        total: row.total,
-      };
-    });
+    const formattedResult: Pokemon[] = formatResult(result.rows);
     for (const pokemon of formattedResult) {
       const typeResult = await pool.query(
         `SELECT type.name FROM types type

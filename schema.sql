@@ -54,4 +54,8 @@ CREATE INDEX idx_pokemon_name ON pokemon(name);
 
 CREATE INDEX idx_types_name ON types(name);
 
+CREATE INDEX idx_pokemon_types_pokemon_id ON pokemon_types(pokemon_id);
+
+CREATE INDEX idx_pokemon_types_type_id ON pokemon_types(type_id);
+
 
